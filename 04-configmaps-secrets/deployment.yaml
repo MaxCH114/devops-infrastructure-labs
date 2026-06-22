@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-demo-deployment
+  labels:
+    app: config-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config-demo
+  template:
+    metadata:
+      labels:
+        app: config-demo
+    spec:
+      containers:
+        - name: app
+          image: nginx:1.25-alpine
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+          # 1. Inject ConfigMap and Secret keys as Environment Variables
+          env:
+            - name: APP_COLOR
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: APP_COLOR
+            - name: APP_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: APP_MODE
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: DB_PASSWORD
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: API_KEY
+          # 2. Mount ConfigMap file as a Volume
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/config
+      volumes:
+        - name: config-volume
+          configMap:
+            name: app-config
+            items:
+              - key: app.properties
+                path: app.properties
