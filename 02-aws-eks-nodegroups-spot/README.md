@@ -1,37 +1,44 @@
 # EKS Nodegroups Management (On-Demand + Spot)
 
-This module demonstrates how to manage Amazon EKS nodegroups using `eksctl`, including adding a second nodegroup with a **mixed capacity strategy** (On-Demand + Spot instances).
-
----
-
-## Prerequisites
-
-- An existing EKS cluster running:
-  - Cluster name: `eks-platform`
-  - Region: `us-east-1`
-- AWS CLI configured (`aws configure`)
-- `eksctl` installed
-- `kubectl` installed
-- An existing EC2 Key Pair in AWS:
-  - `mydemokeypair`
+This module demonstrates how to configure and use multiple node groups, specifically leveraging a **mixed capacity strategy** (On-Demand + Spot instances) to optimize infrastructure costs.
 
 ---
 
 ## Files
 
-- `eksctl-nodegroups.yaml`  
-  Contains the EKS cluster metadata and both nodegroups definitions:
-  - `ng-general` (On-Demand)
-  - `ng-mixed` (Mixed On-Demand + Spot)
+* `eksctl-nodegroups.yaml`: Provisioning configuration for `eksctl` creating two nodegroups:
+  * `ng-general`: Fully On-Demand `t3.small` nodes.
+  * `ng-mixed`: A cost-optimized blend of On-Demand and Spot instances (`t3.small` / `t3a.small`).
+* `spot-deployment.yaml`: A deployment manifest configured to only schedule pods on Spot instances.
 
 ---
 
-## Add a Mixed Nodegroup (On-Demand + Spot)
+## Step-by-Step Guide
 
-Create only the nodegroup `ng-mixed`:
-
+### 1. Provision Cluster with Nodegroups
 ```bash
-eksctl create nodegroup \
-  --config-file=eksctl-nodegroups.yaml \
-  --include='ng-mixed'
+eksctl create cluster -f eksctl-nodegroups.yaml
+```
 
+### 2. Verify Node Capacity Types
+Check which nodes are running on On-Demand vs Spot instances by listing the nodes with their capacity type labels:
+```bash
+kubectl get nodes -L alpha.eksctl.io/nodegroup-name -L eks.amazonaws.com/capacityType
+```
+
+### 3. Deploy Workloads to Spot Instances
+Apply the Spot deployment:
+```bash
+kubectl apply -f spot-deployment.yaml
+```
+
+Verify that all pods are running and are scheduled **only** on the nodes identified as `SPOT`:
+```bash
+kubectl get pods -o wide
+```
+
+### 4. Cleanup
+Delete the deployment:
+```bash
+kubectl delete -f spot-deployment.yaml
+```
